@@ -1,4 +1,4 @@
-import * as React from 'react'
+import * as React from "react";
 
 import {
   useQuery,
@@ -6,22 +6,22 @@ import {
   MutationCache,
   onlineManager,
   useIsRestoring,
-} from '@tanstack/react-query'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import toast, { Toaster } from 'react-hot-toast'
+} from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import toast, { Toaster } from "react-hot-toast";
 
-import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
-import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import {
   Link,
   Outlet,
   ReactLocation,
   Router,
   useMatch,
-} from '@tanstack/react-location'
+} from "@tanstack/react-location";
 
-import * as api from './api'
-import { movieKeys, useMovie } from './movies'
+import * as api from "./api";
+import { movieKeys, useMovie } from "./movies";
 
 onlineManager.setOnline(navigator.onLine);
 
@@ -35,9 +35,9 @@ window.addEventListener("online", (e) => {
 
 const persister = createSyncStoragePersister({
   storage: window.localStorage,
-})
+});
 
-const location = new ReactLocation()
+const location = new ReactLocation();
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,22 +50,22 @@ const queryClient = new QueryClient({
   // configure global cache callbacks to show toast notifications
   mutationCache: new MutationCache({
     onSuccess: (data) => {
-      toast.success(data.message)
+      toast.success(data.message);
     },
     onError: (error) => {
-      toast.error(error.message)
+      toast.error(error.message);
     },
   }),
-})
+});
 
 // we need a default mutation function so that paused mutations can resume after a page reload
 queryClient.setMutationDefaults(movieKeys.all(), {
   mutationFn: async ({ id, comment }) => {
     // to avoid clashes with our optimistic update when an offline mutation continues
-    await queryClient.cancelQueries({ queryKey: movieKeys.detail(id) })
-    return api.updateMovie(id, comment)
+    await queryClient.cancelQueries({ queryKey: movieKeys.detail(id) });
+    return api.updateMovie(id, comment);
   },
-})
+});
 
 export default function App() {
   return (
@@ -74,29 +74,31 @@ export default function App() {
       persistOptions={{ persister }}
       onSuccess={() => {
         // resume mutations after initial restore from localStorage was successful
-        queryClient.resumePausedMutations().then(() => {
-          queryClient.invalidateQueries()
-        })
+        if (onlineManager.isOnline()) {
+          queryClient.resumePausedMutations().then(() => {
+            queryClient.invalidateQueries();
+          });
+        }
       }}
     >
       <Movies />
       <ReactQueryDevtools initialIsOpen />
     </PersistQueryClientProvider>
-  )
+  );
 }
 
 function Movies() {
-  const isRestoring = useIsRestoring()
+  const isRestoring = useIsRestoring();
   return (
     <Router
       location={location}
       routes={[
         {
-          path: '/',
+          path: "/",
           element: <List />,
         },
         {
-          path: ':movieId',
+          path: ":movieId",
           element: <Detail />,
           errorElement: <MovieError />,
           loader: ({ params: { movieId } }) =>
@@ -115,17 +117,17 @@ function Movies() {
       <Outlet />
       <Toaster />
     </Router>
-  )
+  );
 }
 
 function List() {
   const moviesQuery = useQuery({
     queryKey: movieKeys.list(),
     queryFn: api.fetchMovies,
-  })
+  });
 
   if (moviesQuery.isLoading && moviesQuery.isFetching) {
-    return 'Loading...'
+    return "Loading...";
   }
 
   if (moviesQuery.data) {
@@ -149,17 +151,17 @@ function List() {
         <div>
           Updated at: {new Date(moviesQuery.data.ts).toLocaleTimeString()}
         </div>
-        <div>{moviesQuery.isFetching && 'fetching...'}</div>
+        <div>{moviesQuery.isFetching && "fetching..."}</div>
       </div>
-    )
+    );
   }
 
   // query will be in 'idle' fetchStatus while restoring from localStorage
-  return null
+  return null;
 }
 
 function MovieError() {
-  const { error } = useMatch()
+  const { error } = useMatch();
 
   return (
     <div>
@@ -167,34 +169,39 @@ function MovieError() {
       <h1>Couldn't load movie!</h1>
       <div>{error.message}</div>
     </div>
-  )
+  );
 }
 
 function Detail() {
   const {
     params: { movieId },
-  } = useMatch()
-  
-  const { comment, setComment, updateMovie, movieQuery } = useMovie(movieId)
+  } = useMatch();
+
+  const { comment, setComment, updateMovie, movieQuery } = useMovie(movieId);
 
   if (movieQuery.isLoading && movieQuery.isFetching) {
-    return 'Loading...'
+    return "Loading...";
   }
 
   function submitForm(event) {
-    event.preventDefault()
+    event.preventDefault();
 
     updateMovie.mutate({
       id: movieId,
       comment,
-    })
+    });
   }
 
   if (movieQuery.data) {
     return (
       <form onSubmit={submitForm}>
-        {queryClient.getMutationCache().getAll().filter((m) =>m.state.isPaused).length} pending mutations
-
+        {
+          queryClient
+            .getMutationCache()
+            .getAll()
+            .filter((m) => m.state.isPaused).length
+        }{" "}
+        pending mutations
         <Link to="..">Back</Link>
         <h1>Movie: {movieQuery.data.movie.title}</h1>
         <p>
@@ -220,19 +227,19 @@ function Detail() {
         <div>
           Updated at: {new Date(movieQuery.data.ts).toLocaleTimeString()}
         </div>
-        <div>{movieQuery.isFetching && 'fetching...'}</div>
+        <div>{movieQuery.isFetching && "fetching..."}</div>
         <div>
           {updateMovie.isPaused
-            ? 'mutation paused - offline'
-            : updateMovie.isLoading && 'updating...'}
+            ? "mutation paused - offline"
+            : updateMovie.isLoading && "updating..."}
         </div>
       </form>
-    )
+    );
   }
 
   if (movieQuery.isPaused) {
-    return "We're offline and have no data to show :("
+    return "We're offline and have no data to show :(";
   }
 
-  return null
+  return null;
 }
